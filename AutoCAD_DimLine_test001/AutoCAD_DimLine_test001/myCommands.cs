@@ -150,6 +150,62 @@ namespace AutoCAD_DimLine_test001
             }
         }
 
+
+        [CommandMethod("LineIntegrate")]
+        public void LineIntegration() // This method can have any name
+        {
+            // Put your command code here
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Editor ed;
+
+            ed = doc.Editor;
+
+            using (Transaction trans = doc.TransactionManager.StartTransaction())
+            {
+                PromptSelectionOptions PPO = new PromptSelectionOptions();
+                PromptSelectionResult PPR = ed.GetSelection(PPO);
+
+                SelectionSet SS = PPR.Value;
+                
+                List<Line> LOL = new List<Line>();
+
+                foreach (SelectedObject SO in SS)
+                {
+                    Entity ent = (Entity)trans.GetObject(SO.ObjectId, OpenMode.ForRead);
+
+
+                    if (ent is Line)
+                    {
+                        Line line = (Line)ent;
+                        LOL.Add(line);
+                    }
+                }
+
+                foreach (Line el in LOL)
+                {
+                    foreach (Line el2 in LOL)
+                    {
+                        if (el.StartPoint.X == el2.StartPoint.X && el.EndPoint.X == el2.EndPoint.X)
+                        {
+
+                        }
+                    }
+
+
+                    
+                }
+
+
+            }
+
+
+
+        }
+
+
+
+
+
         // Application Session Command with localized name
         [CommandMethod("GetScale")]
         public void GetScale() // This method can have any name
