@@ -25,7 +25,7 @@
 
 ### PC에 프로젝트 폴더 생성
 - git clone “url주소”
-  - url주소는 repository주소를 입력하면 됩니다. 이 repository의 경우, https://github.com/seraict23/ParkPro.git 입니다.
+  - url주소는 repository주소를 입력하면 됩니다. 이 repository의 경우, https://github.com/seraict23/GitHubInit.git 입니다.
 
 ***
 ## 공통  
