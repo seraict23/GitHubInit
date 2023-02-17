@@ -7,6 +7,7 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 
 // This line is not mandatory, but improves loading performances
 [assembly: CommandClass(typeof(AutoCAD_DimLine_test001.MyCommands))]
@@ -151,8 +152,118 @@ namespace AutoCAD_DimLine_test001
         }
 
 
-        [CommandMethod("LineIntegrate")]
-        public void LineIntegration() // This method can have any name
+        [CommandMethod("FindConnected")] // 정확하게 점으로 연결된 선들만 인식;;
+        public void FindConnected()
+        {
+            bool AreLinesConnected(Line line1, Line line2)
+            {
+                if (line1.StartPoint.IsEqualTo(line2.StartPoint) || line1.StartPoint.IsEqualTo(line2.EndPoint) ||
+                line1.EndPoint.IsEqualTo(line2.StartPoint) || line1.EndPoint.IsEqualTo(line2.EndPoint))
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Editor ed;
+
+            ed = doc.Editor;
+
+            using (Transaction trans = doc.TransactionManager.StartTransaction())
+            {
+                PromptSelectionOptions PPO = new PromptSelectionOptions();
+                PromptSelectionResult PPR = ed.GetSelection(PPO);
+
+                SelectionSet SS = PPR.Value;
+
+                List<Line> LOL = new List<Line>();
+
+                foreach (SelectedObject SO in SS)
+                {
+                    Entity ent = (Entity)trans.GetObject(SO.ObjectId, OpenMode.ForRead);
+
+                    if (ent is Line)
+                    {
+                        Line line = (Line)ent;
+                        LOL.Add(line);
+                    }
+                }
+
+                foreach (Line e in LOL)
+                {
+                    foreach (Line el2 in LOL)
+                    {
+                        if (e != el2) //자기 자신과 비교 제외
+                        {
+                            if(AreLinesConnected(e, el2))
+                            {
+                                ed.WriteMessage("\nAline: "+e.StartPoint.ToString()+e.EndPoint.ToString()+" // Bline: "+el2.StartPoint.ToString()+el2.EndPoint+ToString());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        [CommandMethod("GetDistanceMethod")] // 라인들 사이의 거리를 측정합니다.
+        public void GetDistanceMethod()
+        {
+            // Put your command code here
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Editor ed;
+
+            ed = doc.Editor;
+
+            using (Transaction trans = doc.TransactionManager.StartTransaction())
+            {
+                PromptSelectionOptions PPO = new PromptSelectionOptions();
+                PromptSelectionResult PPR = ed.GetSelection(PPO);
+
+                SelectionSet SS = PPR.Value;
+
+                List<Line> LOL = new List<Line>();
+
+                foreach (SelectedObject SO in SS)
+                {
+                    Entity ent = (Entity)trans.GetObject(SO.ObjectId, OpenMode.ForRead);
+
+                    if (ent is Line)
+                    {
+                        Line line = (Line)ent;
+                        if(line.StartPoint.X == line.EndPoint.X)
+                        {
+                            LOL.Add(line);
+                        }
+                    }
+                }
+
+                foreach(Line e in LOL)
+                {
+                    List<double> distances = new List<double>();
+
+                    foreach (Line el2 in LOL)
+                    {
+                        if(e != el2 && e.StartPoint.X != el2.StartPoint.X) //자기 자신과 비교 or 같은 축의 선 제외
+                        {
+                            distances.Add(e.GetClosestPointTo(el2.StartPoint, true).DistanceTo(el2.StartPoint));
+                        }
+                    }
+
+                    double result = distances.Min();
+
+                    ed.WriteMessage("\n" + result.ToString());
+                }
+            }
+        }
+
+
+        [CommandMethod("LineIntegrate")] // 모든 교차점을 찾아 출력합니다.
+        public void LineIntegration() 
         {
             // Put your command code here
             Document doc = Application.DocumentManager.MdiActiveDocument;
@@ -180,25 +291,24 @@ namespace AutoCAD_DimLine_test001
                         LOL.Add(line);
                     }
                 }
+                Point3dCollection points = new Point3dCollection();
 
-                foreach (Line el in LOL)
+                foreach(Line e in LOL)
                 {
-                    foreach (Line el2 in LOL)
+                    foreach (Line e2 in LOL)
                     {
-                        if (el.StartPoint.X == el2.StartPoint.X && el.EndPoint.X == el2.EndPoint.X)
+                        if(e != e2)
                         {
-
+                            e.IntersectWith(e2, Intersect.OnBothOperands, points, IntPtr.Zero, IntPtr.Zero);
                         }
                     }
-
-
-                    
                 }
 
-
+                foreach(Point3d pt in points)
+                {
+                    ed.WriteMessage("\n"+pt.ToString());
+                }
             }
-
-
 
         }
 
@@ -207,8 +317,8 @@ namespace AutoCAD_DimLine_test001
 
 
         // Application Session Command with localized name
-        [CommandMethod("GetScale")]
-        public void GetScale() // This method can have any name
+        [CommandMethod("GetScale")] // under construction
+        public void GetScale()
         {
             // Put your command code here
             Document doc = Application.DocumentManager.MdiActiveDocument;
