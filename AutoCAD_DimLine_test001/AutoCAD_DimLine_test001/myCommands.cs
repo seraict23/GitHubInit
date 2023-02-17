@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
+using System.Collections.Generic;
 using System;
 
 // This line is not mandatory, but improves loading performances
@@ -80,6 +81,20 @@ namespace AutoCAD_DimLine_test001
                     trans.AddNewlyCreatedDBObject(DSTR, true);
                 }
 
+                int position = 0;
+                PromptPointOptions PPO = new PromptPointOptions("click the point you want dim line to be drawn");
+                PromptPointResult PPR = ed.GetPoint(PPO);
+                switch (Keyword)
+                {
+                    case "Vertical":
+                        position = int.Parse(PPR.Value.X.ToString().Split((char)'.')[0]);
+                        break;
+
+                    case "Horizontal":
+                        position = int.Parse(PPR.Value.Y.ToString().Split((char)'.')[0]);
+                        break;
+                }
+
 
                 ObjectId myDimStyleId = DSTR.ObjectId;
 
@@ -106,7 +121,7 @@ namespace AutoCAD_DimLine_test001
                             case "Vertical":
                                 if (-1 < (ptA_x - ptB_x) && (ptA_x - ptB_x) < 1)
                                 {
-                                    Point3d dimPosition = new Point3d(260, (ptA_y + ptB_y) / 2, 0);
+                                    Point3d dimPosition = new Point3d(position, (ptA_y + ptB_y) / 2, 0);
                                     AlignedDimension dimLine = new AlignedDimension(ptA, ptB, dimPosition, protLine.Length.ToString(), myDimStyleId);
 
                                     btr.AppendEntity(dimLine);
@@ -118,7 +133,7 @@ namespace AutoCAD_DimLine_test001
                                 if (-1 < (ptA_y - ptB_y) && (ptA_y - ptB_y) < 1)
                                 {
 
-                                    Point3d dimPosition = new Point3d((ptA_x + ptB_x) / 2, 215, 0);
+                                    Point3d dimPosition = new Point3d((ptA_x + ptB_x) / 2, position, 0);
                                     AlignedDimension dimLine = new AlignedDimension(ptA, ptB, dimPosition, protLine.Length.ToString(), myDimStyleId);
 
                                     btr.AppendEntity(dimLine);
@@ -136,10 +151,45 @@ namespace AutoCAD_DimLine_test001
         }
 
         // Application Session Command with localized name
-        [CommandMethod("MyGroup", "MySessionCmd", "MySessionCmdLocal", CommandFlags.Modal | CommandFlags.Session)]
-        public void MySessionCmd() // This method can have any name
+        [CommandMethod("GetScale")]
+        public void GetScale() // This method can have any name
         {
             // Put your command code here
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Editor ed;
+
+            ed = doc.Editor;
+
+            using(Transaction trans = doc.TransactionManager.StartTransaction())
+            {
+                PromptSelectionOptions PPO = new PromptSelectionOptions();
+                PromptSelectionResult PPR = ed.GetSelection(PPO);
+
+                List<Point3d> LoP = new List<Point3d>();
+
+                SelectionSet SS = PPR.Value;
+
+                foreach (SelectedObject SO in SS)
+                {
+                    Entity ent = (Entity)trans.GetObject(SO.ObjectId, OpenMode.ForRead);
+                    
+                    if(ent is Line)
+                    {
+                        Line line = (Line)ent;
+                        Point3d point = line.StartPoint;
+                        LoP.Add(point);
+                        point = line.EndPoint;
+                        LoP.Add(point);
+                    }
+                }
+
+
+
+
+            }
+
+            
+
         }
 
         // LispFunction is similar to CommandMethod but it creates a lisp 
