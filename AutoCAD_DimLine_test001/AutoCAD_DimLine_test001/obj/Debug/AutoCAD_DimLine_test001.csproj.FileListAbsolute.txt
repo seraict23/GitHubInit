@@ -5,3 +5,4 @@ C:\Users\k\Documents\SeraICT_Projects\GitHubInit\AutoCAD_DimLine_test001\AutoCAD
 C:\Users\k\Documents\SeraICT_Projects\GitHubInit\AutoCAD_DimLine_test001\AutoCAD_DimLine_test001\bin\Debug\AutoCAD_DimLine_test001.pdb
 C:\Users\k\Documents\SeraICT_Projects\GitHubInit\AutoCAD_DimLine_test001\AutoCAD_DimLine_test001\obj\Debug\AutoCAD_DimLine_test001.dll
 C:\Users\k\Documents\SeraICT_Projects\GitHubInit\AutoCAD_DimLine_test001\AutoCAD_DimLine_test001\obj\Debug\AutoCAD_DimLine_test001.pdb
+C:\Users\k\Documents\SeraICT_Projects\GitHubInit\AutoCAD_DimLine_test001\AutoCAD_DimLine_test001\obj\Debug\AutoCAD_DimLine_test001.csproj.AssemblyReference.cache
