@@ -46,56 +46,6 @@ namespace AutoCAD_DimLine_test001
         }
 
 
-        [CommandMethod("LineExtender")]
-        public void LineExtender()
-        {
-            Document doc = Application.DocumentManager.MdiActiveDocument;
-            Editor ed;
-
-            ed = doc.Editor;
-
-            PromptPointOptions PPO = new PromptPointOptions("Click left upper point");
-            Point3d ptLU = ed.GetPoint(PPO).Value;
-            Double ptUpside = ptLU.Y;
-
-            PPO = new PromptPointOptions("Click right under point");
-            Point3d ptRD = ed.GetPoint(PPO).Value;
-            Double ptDown = ptRD.Y;
-
-            using (Transaction trans = doc.TransactionManager.StartTransaction())
-            {
-                BlockTable bt = (BlockTable)trans.GetObject(doc.Database.BlockTableId, OpenMode.ForRead);
-                BlockTableRecord btr = (BlockTableRecord)trans.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
-
-                foreach (ObjectId id in btr)
-                {
-                    Entity el = (Entity)trans.GetObject(id, OpenMode.ForRead);
-                    if(el is Line)
-                    {
-                        Line line = (Line)el;
-                        Line theLine = new Line();
-
-                        if(Tolerance.Equals(line.StartPoint.X, line.EndPoint.X))
-                        {
-                            theLine = new Line(new Point3d(line.StartPoint.X, ptUpside, 0), new Point3d(line.EndPoint.X, ptDown, 0));
-                            theLine.Color = Autodesk.AutoCAD.Colors.Color.FromRgb(255, 0, 255);
-                        }
-                        else if(Tolerance.Equals(line.StartPoint.Y, line.EndPoint.Y))
-                        {
-
-                        }
-
-                        btr.AppendEntity(theLine);
-                        trans.AddNewlyCreatedDBObject(theLine, true);
-
-                    }
-
-                }
-
-                trans.Commit();
-
-            }
-        }
 
         // Modal Command with pickfirst selection
         [CommandMethod("DimLineMaker")]
