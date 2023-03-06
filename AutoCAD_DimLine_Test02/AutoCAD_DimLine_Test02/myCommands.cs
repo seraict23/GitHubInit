@@ -323,9 +323,9 @@ namespace AutoCAD_DimLine_Test02
             }
         }
 
-        [CommandMethod("DimLineMaker")] 
-
-        public void DimLineMaker()
+        [CommandMethod("DimLineMakerDummy")] 
+        
+        public void DimLineMakerDD()
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Editor ed;
@@ -543,10 +543,10 @@ namespace AutoCAD_DimLine_Test02
                 }
 
                 l3 = new Line(lowPoint, highPoint);
-                dimPosition_outer = new Point3d((l3.StartPoint.Y + l3.EndPoint.Y) / 2, (LOPX.Max() - LOPX.Min()) * 0.25 + LOPY.Max(), 0);
+                dimPosition_outer = new Point3d((LOPX.Max() - LOPX.Min()) * 0.25 + LOPX.Max(), (l3.StartPoint.Y + l3.EndPoint.Y) / 2, 0);
                 dimLine_outer = new AlignedDimension(l3.StartPoint, l3.EndPoint, dimPosition_outer, l3.Length.ToString(), myDimStyleId);
 
-                rDim = new RotatedDimension(-90, lowPoint, highPoint, dimPosition_outer, l3.Length.ToString(), myDimStyleId);
+                rDim = new RotatedDimension(Math.PI/2, lowPoint, highPoint, dimPosition_outer, l3.Length.ToString(), myDimStyleId);
 
                 btr.AppendEntity(rDim);
                 trans.AddNewlyCreatedDBObject(rDim, true);
@@ -555,6 +555,324 @@ namespace AutoCAD_DimLine_Test02
 
                 trans.Commit();
 
+            }
+        }
+
+
+        [CommandMethod("DimLineMaker")]
+        public void DimLineMaker()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Editor ed;
+
+            ed = doc.Editor;
+
+
+            // get SelectionSet
+            PromptSelectionOptions PSO = new PromptSelectionOptions();
+            PromptSelectionResult PSR = ed.GetSelection(PSO);
+
+            if (PSR.Status != PromptStatus.OK)
+            {
+                return;
+            }
+            SelectionSet SS = PSR.Value;
+
+
+            using (Transaction trans = doc.TransactionManager.StartTransaction())
+            {
+
+                BlockTable bt = (BlockTable)trans.GetObject(doc.Database.BlockTableId, OpenMode.ForWrite);
+                BlockTableRecord btr = (BlockTableRecord)trans.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+
+                List<Point3d> LOP = new List<Point3d>();
+                List<Double> LOPX = new List<Double>();
+                List<Double> LOPY = new List<Double>();
+                List<Line> LOL = new List<Line>();
+
+                ObjectId DimStyleSetting(List<double> xPoints, List<double> yPoints)
+                {
+                    // DimStyleSetup
+                    DimStyleTable DST = (DimStyleTable)trans.GetObject(doc.Database.DimStyleTableId, OpenMode.ForWrite);
+                    DimStyleTableRecord DSTR = new DimStyleTableRecord();
+
+                    if (DST.Has("MyDimStyle"))
+                    {
+                        ObjectId dimStyleRecordId = DST["MyDimStyle"];
+                        DSTR = (DimStyleTableRecord)trans.GetObject(dimStyleRecordId, OpenMode.ForWrite);
+                    }
+                    else
+                    {
+                        DSTR.Name = "MyDimStyle";
+                    }
+                    DSTR.Dimclre = Autodesk.AutoCAD.Colors.Color.FromRgb(255, 0, 255);
+                    DSTR.Dimclrd = Autodesk.AutoCAD.Colors.Color.FromRgb(255, 255, 0);
+                    DSTR.Dimclrt = Autodesk.AutoCAD.Colors.Color.FromRgb(0, 255, 255);
+                    if(xPoints.Max() - xPoints.Min() < yPoints.Max() - yPoints.Min())
+                    {
+                        DSTR.Dimtxt = (yPoints.Max() - yPoints.Min()) * 0.05;
+                    }
+                    else
+                    {
+                        DSTR.Dimtxt = (xPoints.Max() - xPoints.Min()) * 0.05;
+                    }
+
+
+                    if (DST.Has("MyDimStyle"))
+                    {
+                    }
+                    else
+                    {
+                        DST.Add(DSTR);
+                        trans.AddNewlyCreatedDBObject(DSTR, true);
+                    }
+
+                    ObjectId myDimStyleId = DSTR.ObjectId;
+                    return myDimStyleId;
+                }
+
+
+                void Setting(string axis)
+                {
+                    // empty the lists
+                    LOP.Clear();
+                    LOPY.Clear();
+                    LOPX.Clear();
+                    LOL.Clear();
+
+                    foreach (SelectedObject SO in SS)
+                    {
+                        Entity ent = (Entity)trans.GetObject(SO.ObjectId, OpenMode.ForRead);
+                        if (ent is Line)
+                        {
+                            Double spt = 0;
+                            Double ept = 0;
+                            Line line = (Line)ent;
+                            switch (axis)
+                            {
+                                case "vertical":
+                                    spt = line.StartPoint.X;
+                                    ept = line.EndPoint.X;
+                                    break;
+                                case "horizontal":
+                                    spt = line.StartPoint.Y;
+                                    ept = line.EndPoint.Y;
+                                    break;
+                            }
+
+                            if (Tolerance.Equals(spt, ept) && line.Color != Autodesk.AutoCAD.Colors.Color.FromRgb(255,0,0))
+                            {
+                                LOL.Add(line);
+                                LOPY.Add(line.StartPoint.Y);
+                                LOPY.Add(line.EndPoint.Y);
+                                LOPX.Add(line.StartPoint.X);
+                                LOPX.Add(line.EndPoint.X);
+                                LOP.Add(line.StartPoint);
+                                LOP.Add(line.EndPoint);
+                            }
+                        }
+                    }
+                }
+
+
+                List<Line> FindOutLine(List<Line> listOfLines, string axis, string direction)
+                {
+                    List<Line> ResultLines = new List<Line>();
+
+                    foreach (Line l1 in listOfLines)
+                    {
+                        bool flag = true;
+                        Double locationl1 = 0;
+                        Double spt = 0;
+                        Double ept = 0;
+                        switch (axis)
+                        {
+                            case "vertical":
+                                spt = l1.StartPoint.Y;
+                                ept = l1.EndPoint.Y;
+                                locationl1 = l1.StartPoint.X;
+                                break;
+
+                            case "horizontal":
+                                spt = l1.StartPoint.X;
+                                ept = l1.EndPoint.X;
+                                locationl1 = l1.StartPoint.Y;
+                                break;
+                        }
+
+                        foreach (Line l2 in listOfLines)
+                        {
+                            Double sptl2 = 0;
+                            Double eptl2 = 0;
+                            Double locationl2 = 0;
+                            switch (axis)
+                            {
+                                case "vertical":
+                                    sptl2 = l2.StartPoint.Y;
+                                    eptl2 = l2.EndPoint.Y;
+                                    locationl2 = l2.StartPoint.X;
+                                    break;
+
+                                case "horizontal":
+                                    sptl2 = l2.StartPoint.X;
+                                    eptl2 = l2.EndPoint.X;
+                                    locationl2 = l2.StartPoint.Y;
+                                    break;
+                            }
+
+                            if (Tolerance.Equals(l1, l2))
+                            {
+
+                            }
+                            else if (locationl1 < locationl2)
+                            {
+                                if (new double[] { spt, ept }.Max() <= new double[] { sptl2, eptl2 }.Min() || new double[] { sptl2, eptl2 }.Max() <= new double[] { spt, ept }.Min())
+                                {
+                                }
+                                else
+                                {
+                                    flag = false;
+                                }
+                            }
+                        }
+
+                        if (flag)
+                        {
+                            ResultLines.Add(l1);
+                        }
+                    }
+                    return ResultLines;
+                }
+
+
+                void DrawDimLine(List<Line> ResultLines, string axis, ObjectId myDimStyleId)
+                {
+                    Point3d dimPosition = new Point3d();
+                    AlignedDimension dimLine = new AlignedDimension();
+
+                    foreach (Line ln in ResultLines)
+                    {
+                        String lengthTxt = ln.Length.ToString();
+                        if(lengthTxt.Contains("."))
+                        {
+                            lengthTxt = lengthTxt.Split("."[0])[0];
+                        }
+
+                        switch (axis)
+                        {
+                            case "vertical":
+                                dimPosition = new Point3d((LOPX.Max() - LOPX.Min()) * 0.15 + LOPX.Max(), (ln.StartPoint.Y + ln.EndPoint.Y) / 2, 0);
+                                dimLine = new AlignedDimension(ln.StartPoint, ln.EndPoint, dimPosition, lengthTxt, myDimStyleId);
+                                break;
+
+                            case "horizontal":
+                                dimPosition = new Point3d((ln.StartPoint.X + ln.EndPoint.X) / 2, (LOPY.Max() - LOPY.Min()) * 0.15 + LOPY.Max(), 0);
+                                dimLine = new AlignedDimension(ln.StartPoint, ln.EndPoint, dimPosition, lengthTxt, myDimStyleId);
+                                break;
+                        }
+                        btr.AppendEntity(dimLine);
+                        trans.AddNewlyCreatedDBObject(dimLine, true);
+                    }
+                }
+
+
+                void FullSizeDimLine(List<Point3d> listOfPoints, string axis, ObjectId myDimStyleId)
+                {
+                    Point3d lowPoint = new Point3d();
+                    Point3d highPoint = new Point3d();
+
+                    Line ln = new Line();
+                    Point3d dimPosition = new Point3d();
+                    AlignedDimension dimLine_outer = new AlignedDimension();
+                    RotatedDimension rDim = new RotatedDimension();
+                    string lengthTxt = "";
+
+                    switch (axis)
+                    {
+                        case "vertical":
+                            foreach (Point3d pt in listOfPoints)
+                            {
+                                if (pt.Y == LOPY.Min())
+                                {
+                                    lowPoint = pt;
+                                }
+                                if (pt.Y == LOPY.Max())
+                                {
+                                    highPoint = pt;
+                                }
+                            }
+
+                            ln = new Line(lowPoint, highPoint);
+
+                            lengthTxt = ln.Length.ToString();
+                            if (lengthTxt.Contains("."))
+                            {
+                                lengthTxt = lengthTxt.Split("."[0])[0];
+                            }
+
+                            dimPosition = new Point3d((LOPX.Max() - LOPX.Min()) * 0.25 + LOPX.Max(), (ln.StartPoint.Y + ln.EndPoint.Y) / 2, 0);
+                            dimLine_outer = new AlignedDimension(ln.StartPoint, ln.EndPoint, dimPosition, lengthTxt, myDimStyleId);
+                            rDim = new RotatedDimension(Math.PI / 2, lowPoint, highPoint, dimPosition, lengthTxt, myDimStyleId);
+
+                            btr.AppendEntity(rDim);
+                            trans.AddNewlyCreatedDBObject(rDim, true);
+                            break;
+
+                        case "horizontal":
+                            foreach (Point3d pt in LOP)
+                            {
+                                if (pt.X == LOPX.Min())
+                                {
+                                    lowPoint = pt;
+                                }
+                                if (pt.X == LOPX.Max())
+                                {
+                                    highPoint = pt;
+                                }
+                            }
+
+                            ln = new Line(lowPoint, highPoint);
+
+                            lengthTxt = ln.Length.ToString();
+                            if (lengthTxt.Contains("."))
+                            {
+                                lengthTxt = lengthTxt.Split("."[0])[0];
+                            }
+
+                            dimPosition = new Point3d((ln.StartPoint.X + ln.EndPoint.X) / 2, (LOPY.Max() - LOPY.Min()) * 0.25 + LOPY.Max(), 0);
+                            dimLine_outer = new AlignedDimension(ln.StartPoint, ln.EndPoint, dimPosition, lengthTxt, myDimStyleId);
+                            rDim = new RotatedDimension(0, lowPoint, highPoint, dimPosition, lengthTxt, myDimStyleId);
+
+                            btr.AppendEntity(rDim);
+                            trans.AddNewlyCreatedDBObject(rDim, true);
+                            break;
+                    }
+                }
+
+
+                // main
+                string[] HorV = { "horizontal", "vertical" };
+                List<Line> ResultLoL;
+                ObjectId dimStyleId = new ObjectId();
+
+                foreach (string i in HorV)
+                {
+                    Setting(i);
+                    foreach (Line e in LOL)
+                    {
+                        ed.WriteMessage("\n" + e.StartPoint.ToString() + "~~~" + e.EndPoint.ToString());
+                    }
+                    dimStyleId = DimStyleSetting(LOPX, LOPY);
+                    ResultLoL = FindOutLine(LOL, i, "");
+                    foreach(Line e in ResultLoL)
+                    {
+                        ed.WriteMessage("\n"+e.StartPoint.ToString()+"---"+e.EndPoint.ToString());
+                    }
+                    DrawDimLine(ResultLoL, i, dimStyleId);
+                    FullSizeDimLine(LOP, i, dimStyleId);
+                }
+
+                trans.Commit();
             }
         }
 
